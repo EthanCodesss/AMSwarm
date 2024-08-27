@@ -103,6 +103,8 @@ Eigen :: ArrayXXf delete_values(float val, Eigen :: ArrayXXf arr)
 	temp.conservativeResize(k, 1);
 	return temp;
 }
+
+// 将两个矩阵合并为更大的矩阵， 使得arr1 和 arr2 位于这个新矩阵的对角线上
 Eigen :: ArrayXXf block_diag(Eigen :: ArrayXXf arr1, Eigen :: ArrayXXf arr2)
 {
 	Eigen :: ArrayXXf temp(arr1.rows() + arr2.rows(), arr1.cols() + arr2.cols());
@@ -117,8 +119,10 @@ five_var bernsteinCoeffOrder10(float n, float tmin, float tmax, Eigen :: ArrayXX
 {
 	five_var s;
 	float l = tmax - tmin;
+	// 时间归一化处理
 	Eigen :: ArrayXXf t = (t_actual - tmin) / l;
 
+	// 存储伯恩斯坦多项式及其一阶到四阶导数的系数
 	Eigen :: ArrayXXf P(num, (int)n + 1), Pdot(num, (int)n + 1), Pddot(num, (int)n + 1), Pdddot(num, (int)n + 1), Pddddot(num, (int)n + 1);
 
 
@@ -182,6 +186,7 @@ five_var bernsteinCoeffOrder10(float n, float tmin, float tmax, Eigen :: ArrayXX
 	Pddddot.col(9) = 30240 * pow(t, 5) - 50400 * pow(t, 6);
 	Pddddot.col(10) = 5040.0 * pow(t, 6);
 
+	// 将结果返回， 这里是因为时间变量t已经被归一化， 因此， 每次对P(t)求导， 结果都会除以时间跨度l
 	s.a = P;
 	s.b = Pdot / l;
 	s.c = Pddot / (l * l);
@@ -393,6 +398,8 @@ int computeXYZ(probData &prob_data, int VERBOSE){
 	
 }
 
+
+// 根据机器人与障碍物之间的距离和障碍物的形状参数来筛选出有效的障碍物， 然后更新结构体中的障碍物数据。
 void initObstacles(probData &prob_data, int VERBOSE)
 {
 	// prob_data.agent_obs_dist.clear();
@@ -403,6 +410,7 @@ void initObstacles(probData &prob_data, int VERBOSE)
 	prob_data.y_static_obs = Eigen :: ArrayXXf :: Ones(prob_data.x_static_obs_og.rows(), prob_data.num);
 	prob_data.z_static_obs = Eigen :: ArrayXXf :: Ones(prob_data.x_static_obs_og.rows(), prob_data.num);
 
+	// 障碍物的形状参数，可能为三个轴方向上的几何半径
 	prob_data.a_static_obs = Eigen :: ArrayXXf :: Ones(prob_data.x_static_obs_og.rows(), prob_data.num);
 	prob_data.b_static_obs = Eigen :: ArrayXXf :: Ones(prob_data.x_static_obs_og.rows(), prob_data.num);
 	prob_data.c_static_obs = Eigen :: ArrayXXf :: Ones(prob_data.x_static_obs_og.rows(), prob_data.num);
@@ -438,6 +446,7 @@ void initObstacles(probData &prob_data, int VERBOSE)
 	prob_data.num_static_obs = k;
 }
 
+// 该函数计算并记录在某个范围内与当前无人机相邻的其他无人机的位置和形状
 void neigbhoringAgents(probData &prob_data, int VERBOSE)
 {
 	Eigen :: ArrayXXf agents_x, agents_y, agents_z;
@@ -492,6 +501,8 @@ void neigbhoringAgents(probData &prob_data, int VERBOSE)
 	prob_data.num_drone = k;
 }
 
+
+//  这个函数实现了连续碰撞避免约束， 函数划分为两种情况， 二维和三维
 void continuousCA(probData &prob_data, int VERBOSE){
 	// COLLISION AVOIDANCE CONSTRAINTS
 	prob_data.cost_slack = Eigen :: ArrayXXf(prob_data.num*prob_data.num_static_obs, prob_data.num*prob_data.num_static_obs);
@@ -500,6 +511,7 @@ void continuousCA(probData &prob_data, int VERBOSE){
 	if(prob_data.world == 2){
 		Eigen :: ArrayXXf A_f, temp_x, temp_y;
 		
+		// 计算梯度
 		Eigen :: ArrayXXf temp_delta_fx = -2.0 *((-prob_data.x_static_obs).rowwise() + prob_data.x.transpose().row(0))/pow(prob_data.a_static_obs,2); 
 		Eigen :: ArrayXXf temp_A_fx = reshape(temp_delta_fx.transpose(), prob_data.num_static_obs*prob_data.num, 1);
 
@@ -527,6 +539,7 @@ void continuousCA(probData &prob_data, int VERBOSE){
 		Eigen :: ArrayXXf temp_b_coll = pow((-prob_data.x_static_obs).rowwise() + prob_data.x.transpose().row(0), 2)/pow(prob_data.a_static_obs, 2) + pow((-prob_data.y_static_obs).rowwise() + prob_data.y.transpose().row(0), 2)/pow(prob_data.b_static_obs, 2) - 1.0;
 		Eigen :: ArrayXXf b_coll = reshape(temp_b_coll.transpose(), prob_data.num_static_obs*prob_data.num, 1) + temp_A_fx*temp_x + temp_A_fy*temp_y;
 
+		// 输出约束矩阵及右端项
 		prob_data.A_coll = A_coll;
 		prob_data.b_coll = b_coll;
 	}
@@ -1002,3 +1015,7 @@ void deployAgent(probData &prob_data, int VERBOSE){
 
 	
 }
+
+// 第一步，每个机器人需要数据结构来保存障碍物信息；
+// 第二步，每个机器人建立自己的变量，约束，损失函数， 只需要创建variables，然后将所需要的信息用类似的方法传递到optimizer就可以
+// 第三步，求解

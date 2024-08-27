@@ -216,9 +216,10 @@ void Simulator :: runAlgorithm(){
 
     std :: thread agent_thread[num_drone];
 
-    // Start Threads
+    // Start Threads 
     auto start = std :: chrono :: high_resolution_clock::now(); 
     for(int i = 0; i < num_drone; i++){
+        // start thread for each agent, depolyAgent is the function, std::ref is the parameter
         agent_thread[i] = std :: thread(deployAgent, std::ref(prob_data[i]), VERBOSE);
     }
 
